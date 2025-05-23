@@ -1,0 +1,15 @@
+# Ignore specific file types
+*.json
+*.m3u
+*.xml
+*.code-workspace
+
+# Ignore everything in the docs folder
+docs/
+
+# Ignore everything in the __pycache__ folder
+__pycache__/
+
+# Ignore specific Python scripts
+make_docs.py
+xstreamclient_test.py
