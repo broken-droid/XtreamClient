@@ -663,8 +663,8 @@ class XtreamClient:
             output_ext = '.'+output_ext
         return f'{self.server_url}/{stream_type}/{self.username}/{self.password}/{stream["stream_id"]}{output_ext}'
 
-    def build_single_category_playlist(self, category: JSON, file_path: str|None=None, tvg_chno: int|None=None, include_extm3u: bool|None=False) -> List[str]:
-        '''Build a playlist out of a single category.  Optionally includes #EXTM3U line at the beginning.
+    def build_m3u_from_category(self, category: JSON, file_path: str|None=None, tvg_chno: int|None=None, include_extm3u: bool|None=False) -> List[str]:
+        '''Build an m3u from a single category.  Optionally includes #EXTM3U line at the beginning.
 
         Args:
             category (JSON): JSON data with category information.  A single item from what you would receive from get_categories.
@@ -717,21 +717,21 @@ class XtreamClient:
         if live:
             categories = self.get_categories() # get live categories
             for category in categories:
-                lines = self.build_single_category_playlist(category=category,tvg_chno=tvg_chno)
+                lines = self.build_m3u_from_category(category=category,tvg_chno=tvg_chno)
                 playlist.extend(lines) # add to playlist
                 if tvg_chno is not None:
                     tvg_chno += 1 # incriment channel num
         if vod:
             categories = self.get_categories(vod=True) # get vod categories
             for category in categories:
-                lines = self.build_single_category_playlist(category=category,tvg_chno=tvg_chno)
+                lines = self.build_m3u_from_category(category=category,tvg_chno=tvg_chno)
                 playlist.extend(lines) # add to playlist
                 if tvg_chno is not None:
                     tvg_chno += 1 # incriment channel num
         if series:
             categories = self.get_categories(series=True) # get series categories
             for category in categories:
-                lines = self.build_single_category_playlist(category=category,tvg_chno=tvg_chno)
+                lines = self.build_m3u_from_category(category=category,tvg_chno=tvg_chno)
                 playlist.extend(lines) # add to playlist
                 if tvg_chno is not None:
                     tvg_chno += 1 # incriment channel num

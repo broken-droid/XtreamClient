@@ -1,5 +1,8 @@
 <!-- markdownlint-disable -->
+
 <div align="center"><a href='https://ko-fi.com/X8X81ELTUM' target='_blank' class="centered-image"><img height='45' style='border:0px;height:45px;' src='https://storage.ko-fi.com/cdn/kofi5.png?v=6' border='0' alt='Buy Me a Coffee at ko-fi.com'/></a></div>
+
+<a href="xtreamclient.py#L0"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 # <kbd>module</kbd> `xtreamclient.py`
 
@@ -12,6 +15,8 @@
 Client class to use Xtream API. 
 
 Connect to a server using Xtream API, authorize, get user and server information, get live/vod/series information, get categories, get epgs, download a playlist or build one from JSON data.  Each client instance is set to m3u/ts by default, use set methods to change this. 
+
+<a href="xtreamclient.py#L23"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>function</kbd> `XtreamClient.__init__`
 
@@ -152,6 +157,8 @@ Username used by this XC instance
 
 ---
 
+<a href="xtreamclient.py#L279"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+
 ### <kbd>function</kbd> `XtreamClient.auth`
 
 ```python
@@ -171,6 +178,8 @@ Authenticate with the server and save user and server info.
  - <b>`XCAuthError`</b>:  If authentication fails. 
 
 ---
+
+<a href="xtreamclient.py#L694"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>function</kbd> `XtreamClient.build_m3u_from_json`
 
@@ -212,10 +221,12 @@ Build and optionally write an m3u from JSON data from the server.  Proceeds by c
 
 ---
 
-### <kbd>function</kbd> `XtreamClient.build_single_category_playlist`
+<a href="xtreamclient.py#L666"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+
+### <kbd>function</kbd> `XtreamClient.build_single_category_m3u`
 
 ```python
-build_single_category_playlist(
+build_single_category_m3u(
     category: Dict[str, Any],
     file_path: str | None = None,
     tvg_chno: int | None = None,
@@ -223,7 +234,7 @@ build_single_category_playlist(
 ) → List[str]
 ```
 
-Build a playlist out of a single category.  Optionally includes #EXTM3U line at the beginning. 
+Build an m3u from a single category.  Optionally includes #EXTM3U line at the beginning. 
 
 
 
@@ -241,6 +252,8 @@ Build a playlist out of a single category.  Optionally includes #EXTM3U line at 
  - <b>`List[str]`</b>:  m3u data as a list of strings 
 
 ---
+
+<a href="xtreamclient.py#L442"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>function</kbd> `XtreamClient.get_categories`
 
@@ -276,6 +289,8 @@ Get Live, VOD, and/or Series categories.  You can combine multiple types in one 
 
 ---
 
+<a href="xtreamclient.py#L551"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+
 ### <kbd>function</kbd> `XtreamClient.get_epg`
 
 ```python
@@ -299,6 +314,8 @@ Not sure if this is widely used.  Use get_xmltv if needed.
  - <b>`JSON`</b>:  JSON data for the streams 
 
 ---
+
+<a href="xtreamclient.py#L510"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>function</kbd> `XtreamClient.get_info`
 
@@ -332,6 +349,8 @@ Get info for a VOD or Series id
 
 ---
 
+<a href="xtreamclient.py#L570"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+
 ### <kbd>function</kbd> `XtreamClient.get_m3u`
 
 ```python
@@ -356,6 +375,8 @@ This endpoint might be missing.  Be ready for errors.
 
 ---
 
+<a href="xtreamclient.py#L430"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+
 ### <kbd>function</kbd> `XtreamClient.get_panel`
 
 ```python
@@ -373,6 +394,8 @@ This returns a lot of info such as user/server/stream information, but user and 
  - <b>`JSON`</b>:  JSON data for a lot of different things, but not as complete 
 
 ---
+
+<a href="xtreamclient.py#L533"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>function</kbd> `XtreamClient.get_short_epg`
 
@@ -397,6 +420,8 @@ Not sure if this is widely used.  Use get_xmltv if needed.
  - <b>`JSON`</b>:  JSON epg data 
 
 ---
+
+<a href="xtreamclient.py#L474"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>function</kbd> `XtreamClient.get_streams`
 
@@ -438,6 +463,8 @@ TODO: handle more than one type in one call
 
 ---
 
+<a href="xtreamclient.py#L592"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+
 ### <kbd>function</kbd> `XtreamClient.get_xmltv`
 
 ```python
@@ -466,6 +493,8 @@ Get XML epg data from the server, and save to file_path if provided.
 ## <kbd>class</kbd> `XC404Error`
 Exception raised for 404 errors. 
 
+<a href="xtreamclient.py#L754"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+
 ### <kbd>function</kbd> `XC404Error.__init__`
 
 ```python
@@ -484,6 +513,8 @@ __init__(message: str, code: int | None = None)
 
 ## <kbd>class</kbd> `XC503Error`
 Exception raised for 503 errors. 
+
+<a href="xtreamclient.py#L759"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>function</kbd> `XC503Error.__init__`
 
@@ -504,6 +535,8 @@ __init__(message: str, code: int | None = None)
 ## <kbd>class</kbd> `XCAuthError`
 Exception raised for authentication errors. 
 
+<a href="xtreamclient.py#L749"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+
 ### <kbd>function</kbd> `XCAuthError.__init__`
 
 ```python
@@ -518,5 +551,5 @@ __init__(message: str, code: int | None = None)
 
 
 
----
-_This file was automatically generated via [lazydocs](https://github.com/ml-tooling/lazydocs)._
+
+_This filefile was automatically generated via [lazydocs](https://github.com/ml-tooling/lazydocs)._
