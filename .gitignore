@@ -12,4 +12,4 @@ __pycache__/
 
 # Ignore specific Python scripts
 make_docs.py
-xstreamclient_test.py
+testclient_test.py
