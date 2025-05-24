@@ -1,6 +1,6 @@
 import requests
 from typing import List, Dict, Literal, Any, cast
-from lazydocs import generate_docs
+import validators
 
 JSON = Dict[str, Any] # type for json dicts
 Params = Dict[str, Any] # type for request parameters
@@ -10,8 +10,7 @@ class XtreamClient:
     Client class to use Xtream API.
 
     Connect to a server using Xtream API, authorize, get user and server information, get live/vod/series
-    information, get categories, get epgs, download a playlist or build one from JSON data.  Each client
-    instance is set to m3u/ts by default, use set methods to change this.
+    information, get categories, get epgs, download a playlist or build one from JSON data.
    '''
     _outputs = {'ts': 'mpegts', 'rtmp': 'rtmp', 'm3u8': 'm3u8'} # type strings to build playlist
     # 'User-Agent': 'TiviMate/5.1.6 (Android 12)'
@@ -23,7 +22,7 @@ class XtreamClient:
     def __init__(self, url: str, username: str, password: str, headers: Dict[str, str]|None=None) -> None:
         '''__init__ method to initialize the client.
 
-        Each client instance is set to m3u/ts by default, use set methods to change this.
+        Set up request session and instance variables.
 
         Args:
             server_url (str):  Required server url.
@@ -31,9 +30,13 @@ class XtreamClient:
             password (str):  Required password.
             headers (dict, optional): Optional headers to pass to requests.  Default headers are set to a browser user agent.
         
-        TODO: url string validation, m3u8 playlists?
+        TODO: m3u8 playlists?
         '''
+        self._session = requests.Session() # request session to use for this instance
+        self._session.headers.update(self.__class__._class_headers) # initialize with default headers for now
         self.server_url = url.rstrip('/') # do more to validate this
+        if not validators.url(url): # basic url validator
+            raise ValueError('Invalid URL')
         self.username = username
         self.password = password
         self.headers = headers # use default class headers if invalid
@@ -60,8 +63,8 @@ class XtreamClient:
         
         TODO: url validation
         '''
-        if type(url) is str:
-            self._server_url = url # add better checking here
+        if type(url) is str and validators.url(url):
+            self._server_url = url # basic url validator
         else:
             raise ValueError('Url must be a string')
 
@@ -137,6 +140,7 @@ class XtreamClient:
                 (all(isinstance(value, str) for value in new_headers.values()))): # not all values are strings
             new_headers = self.__class__._class_headers # use the default class headers instead of raising an error
         self._headers = new_headers # set headers
+        self._session.headers.update(new_headers) # update session headers
 
     @property
     def playlist_type(self) -> str:
@@ -410,7 +414,7 @@ class XtreamClient:
         if params is not None:
             request_params.update(params) # add additional parameters to user/pass
         try:
-            response = requests.get(url, headers=self.headers, params=request_params)
+            response = self._session.get(url, params=request_params)
             match response.status_code:
                 case 200:
                     return response.json() if is_json else response.text # return json or text

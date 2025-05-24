@@ -14,9 +14,9 @@
 
 Client class to use Xtream API. 
 
-Connect to a server using Xtream API, authorize, get user and server information, get live/vod/series information, get categories, get epgs, download a playlist or build one from JSON data.  Each client instance is set to m3u/ts by default, use set methods to change this. 
+Connect to a server using Xtream API, authorize, get user and server information, get live/vod/series information, get categories, get epgs, download a playlist or build one from JSON data. 
 
-<a href="xtreamclient.py#L23"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="xtreamclient.py#L22"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>function</kbd> `XtreamClient.__init__`
 
@@ -31,7 +31,7 @@ __init__(
 
 __init__ method to initialize the client. 
 
-Each client instance is set to m3u/ts by default, use set methods to change this. 
+Set up request session and instance variables. 
 
 
 
@@ -42,7 +42,7 @@ Each client instance is set to m3u/ts by default, use set methods to change this
  - <b>`password`</b> (str):   Required password. 
  - <b>`headers`</b> (dict, optional):  Optional headers to pass to requests.  Default headers are set to a browser user agent. 
 
-TODO: url string validation, m3u8 playlists? 
+TODO: url string validation, m3u8 playlists?, request session 
 
 
 ---
@@ -157,7 +157,7 @@ Username used by this XC instance
 
 ---
 
-<a href="xtreamclient.py#L279"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="xtreamclient.py#L283"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>function</kbd> `XtreamClient.auth`
 
@@ -179,7 +179,39 @@ Authenticate with the server and save user and server info.
 
 ---
 
-<a href="xtreamclient.py#L694"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="xtreamclient.py#L670"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+
+### <kbd>function</kbd> `XtreamClient.build_m3u_from_category`
+
+```python
+build_m3u_from_category(
+    category: Dict[str, Any],
+    file_path: str | None = None,
+    tvg_chno: int | None = None,
+    include_extm3u: bool | None = False
+) → List[str]
+```
+
+Build an m3u from a single category.  Optionally includes #EXTM3U line at the beginning. 
+
+
+
+**Args:**
+ 
+ - <b>`category`</b> (JSON):  JSON data with category information.  A single item from what you would receive from get_categories. 
+ - <b>`file_path`</b> (str):  Optional file path to save playlist to. 
+ - <b>`tvg_chno`</b> (int | None, optional):  Optional channel number to start numbering from if using tvg-chno. Defaults to None. 
+ - <b>`include_extm3u`</b> (bool | None, optional):  Includes #EXTM3U line at the beginning of the playlist. Defaults to False. 
+
+
+
+**Returns:**
+ 
+ - <b>`List[str]`</b>:  m3u data as a list of strings 
+
+---
+
+<a href="xtreamclient.py#L698"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>function</kbd> `XtreamClient.build_m3u_from_json`
 
@@ -221,39 +253,7 @@ Build and optionally write an m3u from JSON data from the server.  Proceeds by c
 
 ---
 
-<a href="xtreamclient.py#L666"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
-
-### <kbd>function</kbd> `XtreamClient.build_single_category_m3u`
-
-```python
-build_single_category_m3u(
-    category: Dict[str, Any],
-    file_path: str | None = None,
-    tvg_chno: int | None = None,
-    include_extm3u: bool | None = False
-) → List[str]
-```
-
-Build an m3u from a single category.  Optionally includes #EXTM3U line at the beginning. 
-
-
-
-**Args:**
- 
- - <b>`category`</b> (JSON):  JSON data with category information.  A single item from what you would receive from get_categories. 
- - <b>`file_path`</b> (str):  Optional file path to save playlist to. 
- - <b>`tvg_chno`</b> (int | None, optional):  Optional channel number to start numbering from if using tvg-chno. Defaults to None. 
- - <b>`include_extm3u`</b> (bool | None, optional):  Includes #EXTM3U line at the beginning of the playlist. Defaults to False. 
-
-
-
-**Returns:**
- 
- - <b>`List[str]`</b>:  m3u data as a list of strings 
-
----
-
-<a href="xtreamclient.py#L442"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="xtreamclient.py#L446"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>function</kbd> `XtreamClient.get_categories`
 
@@ -289,7 +289,7 @@ Get Live, VOD, and/or Series categories.  You can combine multiple types in one 
 
 ---
 
-<a href="xtreamclient.py#L551"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="xtreamclient.py#L555"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>function</kbd> `XtreamClient.get_epg`
 
@@ -315,7 +315,7 @@ Not sure if this is widely used.  Use get_xmltv if needed.
 
 ---
 
-<a href="xtreamclient.py#L510"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="xtreamclient.py#L514"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>function</kbd> `XtreamClient.get_info`
 
@@ -349,7 +349,7 @@ Get info for a VOD or Series id
 
 ---
 
-<a href="xtreamclient.py#L570"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="xtreamclient.py#L574"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>function</kbd> `XtreamClient.get_m3u`
 
@@ -375,7 +375,7 @@ This endpoint might be missing.  Be ready for errors.
 
 ---
 
-<a href="xtreamclient.py#L430"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="xtreamclient.py#L434"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>function</kbd> `XtreamClient.get_panel`
 
@@ -395,7 +395,7 @@ This returns a lot of info such as user/server/stream information, but user and 
 
 ---
 
-<a href="xtreamclient.py#L533"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="xtreamclient.py#L537"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>function</kbd> `XtreamClient.get_short_epg`
 
@@ -421,7 +421,7 @@ Not sure if this is widely used.  Use get_xmltv if needed.
 
 ---
 
-<a href="xtreamclient.py#L474"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="xtreamclient.py#L478"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>function</kbd> `XtreamClient.get_streams`
 
@@ -463,7 +463,7 @@ TODO: handle more than one type in one call
 
 ---
 
-<a href="xtreamclient.py#L592"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="xtreamclient.py#L596"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>function</kbd> `XtreamClient.get_xmltv`
 
@@ -493,7 +493,7 @@ Get XML epg data from the server, and save to file_path if provided.
 ## <kbd>class</kbd> `XC404Error`
 Exception raised for 404 errors. 
 
-<a href="xtreamclient.py#L754"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="xtreamclient.py#L758"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>function</kbd> `XC404Error.__init__`
 
@@ -514,7 +514,7 @@ __init__(message: str, code: int | None = None)
 ## <kbd>class</kbd> `XC503Error`
 Exception raised for 503 errors. 
 
-<a href="xtreamclient.py#L759"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="xtreamclient.py#L763"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>function</kbd> `XC503Error.__init__`
 
@@ -535,7 +535,7 @@ __init__(message: str, code: int | None = None)
 ## <kbd>class</kbd> `XCAuthError`
 Exception raised for authentication errors. 
 
-<a href="xtreamclient.py#L749"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="xtreamclient.py#L753"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>function</kbd> `XCAuthError.__init__`
 
