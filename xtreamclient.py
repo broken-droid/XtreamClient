@@ -41,7 +41,7 @@ class XtreamClient:
         self.password = password
         self.headers = headers # use default class headers if invalid
         self.playlist_type = 'm3u' # default to m3u type
-        self.output_type = '' # default to no type '', server will list valid types after auth happens, set this later
+        self.output_type = '' # allowed output types, default '', server will list valid types after auth happens
 
     @property
     def server_url(self) -> str:
@@ -60,8 +60,6 @@ class XtreamClient:
 
         Raises:
             ValueError: If url is not valid
-        
-        TODO: url validation
         '''
         if type(url) is str and validators.url(url):
             self._server_url = url # basic url validator
@@ -88,7 +86,6 @@ class XtreamClient:
         '''
         if type(new_name) is str:
             self._username = new_name
-            self._is_authenticated = False # invalidate auth
             del self.user_info
             del self.server_info # get rid of server data
         else:
@@ -114,7 +111,6 @@ class XtreamClient:
         '''
         if type(new_pw) is str:
             self._password = new_pw
-            self._is_authenticated = False # invalidate auth
             del self.user_info
             del self.server_info # get rid of server data
         else:
@@ -163,7 +159,7 @@ class XtreamClient:
 
     @property
     def output_type(self) -> str:
-        '''Output type, either '' or one of the valid types allowed by the server.
+        '''Stream output format for live streams, either '' or one of the valid types allowed by the server.
 
         Returns:
             str: the current output_type for this XC instance
@@ -181,15 +177,23 @@ class XtreamClient:
         Raises:
             ValueError: if output type is not in the allowed_output_formats field
         '''
-        allowed = [''] # list to hold allowed types, allow empty string by default
-        try:
-            if self.user_info: # should exist if we're authed, otherwise None
-                allowed.extend(self.user_info['allowed_output_formats']) # add allowed formats if we are authed
-        except XCAuthError: # not authed, just use ''
-            pass
-        if otype not in allowed: # limit otype to valid formats
-            raise ValueError(f'Valid output type needed for this server: {allowed}')
+        if otype not in self.allowed_output_formats: # limit otype to valid formats
+            raise ValueError(f'Valid output type needed for this server: {self.allowed_output_formats}')
         self._output_type = otype # set new output type
+
+    @property
+    def allowed_output_formats(self) -> List[str]:
+        '''List output formats allowed by the server.
+
+        Returns:
+            List[str]: List of output formats
+        '''
+        allowed = [''] # default ''
+        try:
+            allowed.extend(self.user_info['allowed_output_formats']) # formats listed by server
+        except XCAuthError:
+            pass # not authed yet, just use default
+        return allowed
 
     @property
     def user_info(self) -> JSON:
@@ -202,16 +206,13 @@ class XtreamClient:
         Returns:
             JSON: a dictionary with the user info from the server
         '''
-        if not hasattr(self, '_user_info') or not self._is_authenticated: # if this var doesn't exist or not auth'd
-                raise XCAuthError('Not Authenticated')
+        if not self._is_authenticated: # this var won't exist if not auth'd
+                raise # failed auth
         return self._user_info # return the dict with all data
     
     @user_info.deleter
     def user_info(self) -> None:
-        try: # delete attribute
-            del self._user_info
-        except AttributeError:
-            pass # if it's already deleted, ignore
+        self._delete('_user_info')
     
     @property
     def server_info(self) -> JSON:
@@ -224,20 +225,28 @@ class XtreamClient:
         Returns:
             JSON: dictionary of server_info data
         '''
-        if not hasattr(self, '_server_info') or not self._is_authenticated: # if this var doesn't exist or not auth'd
-                raise XCAuthError('Not Authenticated')
+        if not self._is_authenticated: # this var won't exist if not auth'd
+                raise # failed auth
         return self._server_info # return the dict with all data
     
     @server_info.deleter
     def server_info(self) -> None:
-        try: # delete attribute
-            del self._server_info
+        self._delete('_server_info')
+
+    def _delete(self, attr: str) -> None:
+        '''Delete an attribute, and handle errors here instead of in each delete method
+
+        Args:
+            attr (str): attribute name to delete
+        '''
+        try: # delete attribute, keep the error handling here
+            delattr(self, attr)
         except AttributeError:
-            pass # if it's already deleted, ignore
+            pass # skip if it's already deleted
 
     @property # use this internally
     def _is_authenticated(self) -> bool:
-        '''Check if __is_authenticated is True, or attempt to auth if False.
+        '''Check if 'auth' is valid, or attempt to auth if it isn't.
 
         Raises:
             XCAuthError: auth failed
@@ -245,18 +254,11 @@ class XtreamClient:
         Returns:
             bool: True if auth succeeded, otherwise False
         '''
-        if not hasattr(self, '_XtreamClient__is_authenticated'): # check attribute, use mangled name
-            raise XCAuthError('Auth state uninitialized') # raise auth error
-        if not self.__is_authenticated: # if var exists, but we're not authed
-            try:
-                self.auth() # attempt to authenticate
-            except Exception:
-                raise # failed to auth
-        return self.__is_authenticated # return authentication status
-
-    @_is_authenticated.setter # use this internally
-    def _is_authenticated(self, status: bool) -> None:
-        self.__is_authenticated = status
+        if not hasattr(self, '_user_info'): # check if user info has been set
+            self.auth() # attempt to auth if we haven't tried yet
+        if self._user_info['auth'] == 0: # use directly to skip auth
+            raise XCAuthError('Failed Authentication')
+        return True
 
     @staticmethod
     def _pos_int(value: int|str) -> bool:
@@ -282,23 +284,16 @@ class XtreamClient:
 
     def auth(self) -> bool:
     #{server}/player_api.php?username={username}&password={password}
-        '''
-        Authenticate with the server and save user and server info.
+        '''Basic request to get user and server info.
         
         Returns:
             bool: True if successful
-        Raises:
-            XCAuthError: If authentication fails.
         '''
-#       Do not use _is_authenticated property within this method, since it calls auth.
         result = self._make_request_json('player_api.php')
-        self.__is_authenticated = True # set auth state directly
         self._server_info = result['server_info'] # save server info, set these directly
         self._user_info = result['user_info'] # save user info, set these directly
-        if self.user_info['auth'] == 0: # auth failed
-            self.__is_authenticated = False # set auth state directly
-            raise XCAuthError('Authentication failed')
-
+        if self._user_info['auth'] == 0: # auth failed
+            return False
         return True
 
     def _make_request_json(self, endpoint: Literal['player_api.php', 'panel_api.php'],
@@ -407,8 +402,8 @@ class XtreamClient:
         '''
         if 'player_api.php' in endpoint and not params:
             pass # this is the auth call, allow it
-        elif not self._is_authenticated: # _make_request was called for something other than auth, but we're not authenticated, exception should occur
-            self.auth() # see if this can be cleaned up, maybe a separate request method just for auth is more clear
+        elif not self._is_authenticated: # for every other call, check state first
+            raise # failed auth
         url = f"{self.server_url}/{endpoint}"
         request_params: Params = {'username': self.username, 'password': self.password}
         if params is not None:
@@ -475,19 +470,19 @@ class XtreamClient:
             categories.extend(self._make_request_list_json('player_api.php', params=params))
         return categories # List[JSON]
 
-    def get_streams(self, vod: bool|None = False, series: bool|None = False, category_id: int|str|None = None) -> List[JSON]:
+    def get_streams(self, live: bool|None=None, vod: bool|None = False, series: bool|None = False, category_id: int|str|None = None) -> List[JSON]:
     #{server}/player_api.php?username={username}&password={password}&action=get_live_streams
     #{server}/player_api.php?username={username}&password={password}&action=get_vod_streams
     #{server}/player_api.php?username={username}&password={password}&action=get_series
     #{server}/player_api.php?username={username}&password={password}&action=get_live_streams&category_id=X <- optional category_id
     # return list of these:
     #{'num': 1, 'name': 'Test Name 1', 'stream_type': 'live', 'stream_id': 12345, 'stream_icon': 'https://link.url/path/img.png', 'epg_channel_id': 'testchannel1.us', 'added': '1502285791', 'category_id': '30', 'custom_sid': '', 'tv_archive': 0, 'direct_source': '', 'tv_archive_duration': 0}
-        '''Get all streams from the server, or restricted by type or category.
-
+        '''Get all selected stream types from the server, optionally restricted by category.
         
-        Gets only one type at a time.  Defaults to live streams if vod or series is not True.
+        Gets multiple types at a time.  Defaults to live streams if no types are set to True.
 
         Args:
+            live (bool | None, optional): Get Live streams. Defaults to False.
             vod (bool | None, optional): Get VOD streams. Defaults to False.
             series (bool | None, optional): Get Series streams. Defaults to False.
             category_id (int | str | None, optional): Optional category id to get streams from. Defaults to None.
@@ -497,42 +492,53 @@ class XtreamClient:
 
         Returns:
             List[JSON]: List of JSON data for streams
-        
-        TODO: handle more than one type in one call
         '''
-        if vod and series: # can only get one type at a time
-            raise ValueError('Only one type can be specified at a time')
-        params: Params = {'action': 'get_live_streams'} # default to live streams
+        if category_id is not None and not self._pos_int(category_id):
+            raise # invalid category id
+        if not (live or vod or series): # if nothing is selected
+            live = True # default to live streams
+        params: Params = {}
+        output = [] # hold streams to return
+        if live: # live streams
+            params['action'] = 'get_live_streams'
+            if category_id is not None: # add category id parameter if it's there
+                params['category_id'] = category_id
+            output.extend(self._make_request_list_json('player_api.php', params=params)) # List[JSON]
         if vod: # vod streams
             params['action'] = 'get_vod_streams'
+            if category_id is not None: # add category id parameter if it's there
+                params['category_id'] = category_id
+            output.extend(self._make_request_list_json('player_api.php', params=params)) # List[JSON]
         elif series: # series streams
             params['action'] = 'get_series'
-        if category_id and self._pos_int(category_id): # check if category_id is a potitive int
-            params['category_id'] = category_id # should be a string
-        return self._make_request_list_json('player_api.php', params=params) # List[JSON]
+            if category_id is not None: # add category id parameter if it's there
+                params['category_id'] = category_id
+            output.extend(self._make_request_list_json('player_api.php', params=params)) # List[JSON]
+        return output # List[JSON] of selected stream types
 
-    def get_info(self, info_type: Literal['vod', 'series'], stream_id: int|str) -> JSON:
+    def get_info(self, stream_id: int|str, vod: bool|None=None, series: bool|None=None) -> JSON:
     #{server}/player_api.php?username={username}&password={password}&action=get_vod_info&vod_id=X
     #{server}/player_api.php?username={username}&password={password}&action=get_series_info&series_id=X
         '''Get info for a VOD or Series id
 
         Args:
-            info_type (Literal[&#39;vod&#39;, &#39;series&#39;]): Must be either 'vod' or 'series'
             stream_id (int | str): stream id to get info for
+            vod (bool): use stream_id to get vod info
+            series (bool): use stream_id to get series info
 
         Raises:
-            ValueError: invalid info_type or missing arguments
+            ValueError: invalid or missing arguments
 
         Returns:
             JSON: JSON data for the stream id
         '''
-        if info_type and id:
-            if info_type in ['vod', 'series'] and self._pos_int(stream_id):
-                params: Params = {'action': f'get_{info_type}_info', f'{info_type}_id': stream_id}
-                return self._make_request_json('player_api.php', params=params)
-            raise ValueError('type_ must be "vod" or "series" and id must be a positive integer')
-        else:
-            raise ValueError('missing arguments')
+        if not (vod or series) or not self._pos_int(stream_id): # no type selcted, or invalid stream_id
+            raise ValueError('Either vod or series must be selected, and stream_id must be a positive integer')
+        info_type = ''
+        if vod: info_type = 'vod'
+        else: info_type = 'series'
+        params: Params = {'action': f'get_{info_type}_info', f'{info_type}_id': stream_id}
+        return self._make_request_json('player_api.php', params=params)
 
     def get_short_epg(self, stream_id: int|str) -> JSON:
         '''Get short epg for a stream id.
