@@ -1,9 +1,12 @@
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3 import Retry
 from typing import List, Dict, Literal, Any, cast
+from time import sleep
 import validators
 
 JSON = Dict[str, Any] # type for json dicts
-Params = Dict[str, Any] # type for request parameters
+Params = Dict[str, str] # type for request parameters
 
 class XtreamClient:
     '''
@@ -18,8 +21,12 @@ class XtreamClient:
     _class_headers = { # default class headers
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
     }
+    _rq_timeout = 6 # request timeout seconds
+    _forcelist = [408,429,500,502,503,504] # http status codes to retry
+    _allowed_methods = ['GET'] # http request methods to retry
+    _retryClass = None # reference to retry class instance
 
-    def __init__(self, url: str, username: str, password: str, headers: Dict[str, str]|None=None) -> None:
+    def __init__(self, url: str, username: str, password: str, headers: Params|None=None) -> None:
         '''__init__ method to initialize the client.
 
         Set up request session and instance variables.
@@ -28,13 +35,12 @@ class XtreamClient:
             server_url (str):  Required server url.
             username (str):  Required username.
             password (str):  Required password.
-            headers (dict, optional): Optional headers to pass to requests.  Default headers are set to a browser user agent.
+            headers (Params | None, optional): Optional headers to pass to requests.  Default headers are set to a browser user agent.
         
-        TODO: m3u8 playlists?
+        TODO: m3u8 playlists?, retry error handling may need more work
         '''
-        self._session = requests.Session() # request session to use for this instance
-        self._session.headers.update(self.__class__._class_headers) # initialize with default headers for now
-        self.server_url = url.rstrip('/') # do more to validate this
+#        self.__session = self._session # initialize session
+        self.server_url = url.rstrip('/') # chop off / on the end of url string if it's there
         if not validators.url(url): # basic url validator
             raise ValueError('Invalid URL')
         self.username = username
@@ -42,6 +48,50 @@ class XtreamClient:
         self.headers = headers # use default class headers if invalid
         self.playlist_type = 'm3u' # default to m3u type
         self.output_type = '' # allowed output types, default '', server will list valid types after auth happens
+
+    @property
+    def _session(self) -> requests.Session:
+        """Get or create the requests Session instance.
+        
+        Returns:
+            requests.Session: The session instance for making HTTP requests
+        """
+        if not hasattr(self, '_session_obj') or self._session_obj is None:
+            # Create new session if it doesn't exist
+            self._session_obj = requests.Session()
+            self._session_obj.headers = self.__class__._class_headers # type: ignore - default headers
+            adapter = HTTPAdapter(max_retries=self.__class__._get_custom_retry())
+            self._session_obj.mount("http://", adapter)
+            self._session_obj.mount("https://", adapter)
+        return self._session_obj # return singleton
+
+    @classmethod # retry class with timeout, and status codes to handle
+    def _get_custom_retry(cls) -> Retry:
+        '''Make a retry class to use for a session
+
+        Returns:
+            Retry: a retry class for session
+        '''
+        if hasattr(cls, '_retryClass') and cls._retryClass is not None:
+            return cls._retryClass # if singleton exists, return it
+        class CustomRetry(Retry): # otherwise make it
+            def increment(self, *args, **kwargs):
+                # Get the current retry count
+#                current_attempt = kwargs.get('attempt_number', 0)
+                # show the status code before retrying
+                if 'response' in kwargs:
+                    response = kwargs['response']
+                    match response.status_code:
+                        case 429: # too many requests
+                            print(f'{response.status_code}: Waiting for 10 seconds')
+                            sleep(10) # sleep for 10 seconds
+                            print('Retrying')
+                        case _: # everything else
+                            print(f'{response.status_code}: Retrying')
+                    print(f"Retrying due to status code: {response.status_code}")
+                return super().increment(*args, **kwargs)
+        cls._retryClass = CustomRetry(total=4,connect=4,read=4,redirect=2,allowed_methods=cls._allowed_methods,status_forcelist=cls._forcelist,backoff_factor=1,backoff_max=12)
+        return cls._retryClass # set class ref and return it
 
     @property
     def server_url(self) -> str:
@@ -123,7 +173,7 @@ class XtreamClient:
         Returns:
             Params: a dictionary to use for headers in an http request
         '''
-        return self._headers
+        return cast(Params,self._session.headers)
 
     @headers.setter
     def headers(self, new_headers: Params|None) -> None:
@@ -135,7 +185,6 @@ class XtreamClient:
             (all(isinstance(key, str) for key in new_headers)) or # not all keys are strings
                 (all(isinstance(value, str) for value in new_headers.values()))): # not all values are strings
             new_headers = self.__class__._class_headers # use the default class headers instead of raising an error
-        self._headers = new_headers # set headers
         self._session.headers.update(new_headers) # update session headers
 
     @property
@@ -409,22 +458,22 @@ class XtreamClient:
         if params is not None:
             request_params.update(params) # add additional parameters to user/pass
         try:
-            response = self._session.get(url, params=request_params)
-            match response.status_code:
-                case 200:
-                    return response.json() if is_json else response.text # return json or text
-                case 404: # not found, usually from get.php
+            response = self._session.get(url, params=request_params, timeout=self.__class__._rq_timeout) # request with params and timeout
+            response.raise_for_status()
+            return response.json() if is_json else response.text # return json or text
+        except requests.exceptions.HTTPError as e:
+            match e.response.status_code:
+                case 404: # not found
                     raise XC404Error(f'Resource not found: {url}',404)
                 case 444: # banned?
                     raise XCAuthError(f'Account banned or invalid: {self._username}',444)
-                case 503: # temporarily unavailable, use a delayed retry
-                    raise XC503Error(f'Service Temporarily Unavailable',503)
+            #     case 503: # temporarily unavailable, use a delayed retry
+            #         raise XC503Error(f'Service Temporarily Unavailable',503)
                 case _: # unexpected
-                    raise Exception(f'Request failed: {response.status_code} - {response.reason}')
-        except ConnectionError:
-            raise
+                    raise Exception(f'Request failed: {e.response.status_code} - {e.response.reason}')
+
         except Exception:
-            raise
+            raise # raise any other unhandled error
 
     def get_panel(self) -> JSON:
     #{server}/panel_api.php?username={username}&password={password}
@@ -502,17 +551,17 @@ class XtreamClient:
         if live: # live streams
             params['action'] = 'get_live_streams'
             if category_id is not None: # add category id parameter if it's there
-                params['category_id'] = category_id
+                params['category_id'] = str(category_id)
             output.extend(self._make_request_list_json('player_api.php', params=params)) # List[JSON]
         if vod: # vod streams
             params['action'] = 'get_vod_streams'
             if category_id is not None: # add category id parameter if it's there
-                params['category_id'] = category_id
+                params['category_id'] = str(category_id)
             output.extend(self._make_request_list_json('player_api.php', params=params)) # List[JSON]
         elif series: # series streams
             params['action'] = 'get_series'
             if category_id is not None: # add category id parameter if it's there
-                params['category_id'] = category_id
+                params['category_id'] = str(category_id)
             output.extend(self._make_request_list_json('player_api.php', params=params)) # List[JSON]
         return output # List[JSON] of selected stream types
 
@@ -537,7 +586,7 @@ class XtreamClient:
         info_type = ''
         if vod: info_type = 'vod'
         else: info_type = 'series'
-        params: Params = {'action': f'get_{info_type}_info', f'{info_type}_id': stream_id}
+        params: Params = {'action': f'get_{info_type}_info', f'{info_type}_id': str(stream_id)}
         return self._make_request_json('player_api.php', params=params)
 
     def get_short_epg(self, stream_id: int|str) -> JSON:
@@ -554,7 +603,7 @@ class XtreamClient:
     #{server}/player_api.php?username={username}&password={password}&action=get_short_epg&stream_id=X
         if not self._pos_int(stream_id):
             raise # stream_id not a positive integer
-        params: Params = {'action': 'get_short_epg', 'stream_id': stream_id}
+        params: Params = {'action': 'get_short_epg', 'stream_id': str(stream_id)}
 #       json with 'epg_listings' key
         return self._make_request_json('player_api.php',params=params)['epg_listings']
 
@@ -573,7 +622,7 @@ class XtreamClient:
         '''
         params: Params = {'action': 'get_simple_data_table'}
         if stream_id is not None and self._pos_int(stream_id): # check if stream_id is a positive int
-            params['stream_id'] = stream_id # should be a string after _pos_int check
+            params['stream_id'] = str(stream_id) # should be a string after _pos_int check
 #       json with 'epg_listings' key
         return self._make_request_json('player_api.php', params)['epg_listings']
 
